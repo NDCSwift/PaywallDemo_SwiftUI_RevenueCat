@@ -65,9 +65,10 @@ Select a simulator and hit **Run**. Tap the upgrade button to trigger the paywal
 To test on a physical device with a Sandbox Apple ID:
 
 1. Create a Sandbox tester at **App Store Connect → Users & Access → Sandbox → Testers**
-2. On your iPhone go to **Settings → App Store → Sandbox Account** and sign in
-3. Run the app on device — the payment sheet will show **Environment: Sandbox**
-4. Sandbox subscriptions renew on compressed intervals — monthly renews every 5 minutes
+2. On your iPhone go to **Settings → Developer → Sandbox Account** and sign in
+3. Go to your Account settings at the top of settings and under Media & Purchases Sign out (Don't forget to sign back in after testing!!)
+4. Run the app on device — the payment sheet will show **Environment: Sandbox**
+5. Sandbox subscriptions renew on compressed intervals — monthly renews every 5 minutes
 
 Full walkthrough in the tutorial video.
 
