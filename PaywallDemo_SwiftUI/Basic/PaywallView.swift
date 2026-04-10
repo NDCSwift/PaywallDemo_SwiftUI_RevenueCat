@@ -11,16 +11,21 @@
     //
 
     
-import StoreKit
+
 import SwiftUI
+import RevenueCat
 
 struct PaywallView: View {
-    @Environment(SubscriptionManager.self) private var store
+    @Environment(RCSubscriptionManager.self) private var store
     @Environment(\.dismiss) private var dismiss
     
-    @State private var selectedProduct: Product?
+    @State private var selectedPackage: Package?
     @State private var isPurchasing = false
     @State private var showError = false
+    
+    private var packages: [Package] {
+        store.offerings?.current?.availablePackages ?? []
+    }
     
     var body: some View {
         ZStack{
@@ -58,14 +63,14 @@ struct PaywallView: View {
                             .tint(.white)
                     } else {
                         VStack{
-                            ForEach(store.products, id: \.id){ product in
+                            ForEach(packages, id: \.identifier){ package in
                                 Button{
-                                    selectedProduct = product
+                                    selectedPackage = package
                                 } label: {
-                                    Text("\(product.displayName) - \(product.displayPrice)")
+                                    Text("\(package.storeProduct.localizedTitle) - \(package.storeProduct.localizedPriceString)")
                                 }
                                 .buttonStyle(.borderedProminent)
-                                .tint(selectedProduct?.id == product.id ? Color.green : Color.blue)
+                                .tint(selectedPackage?.id == package.id ? Color.green : Color.blue)
                             }
                         }
                     }
@@ -78,13 +83,13 @@ struct PaywallView: View {
                             ProgressView()
                                 .tint(.white)
                         } else {
-                            Text(selectedProduct == nil ? "Select a plan" : "Continue")
+                            Text(selectedPackage == nil ? "Select a plan" : "Continue")
                         }
                     }
                     .buttonStyle(.borderedProminent)
                     
                     Button("Restore Purchases") {
-                        Task { await store.restorePurchases() }
+                        Task { try? await store.restorePurchases() }
                     }
                     .buttonStyle(.glassProminent)
                     .tint(.yellow)
@@ -97,7 +102,7 @@ struct PaywallView: View {
             
         }
         .onAppear {
-            selectedProduct = store.products.last
+            selectedPackage = packages.last
         }
         .alert("Purchase Failed", isPresented: $showError){
             Button("OK", role: .cancel) { }
@@ -107,11 +112,11 @@ struct PaywallView: View {
     }
     
     private func handlePurchase() async {
-        guard let product = selectedProduct else { return }
+        guard let package = selectedPackage else { return }
         isPurchasing = true
         
         do {
-            try await store.purchase(product)
+            try await store.purchase(package)
             dismiss()
         } catch {
             showError = true
@@ -122,5 +127,5 @@ struct PaywallView: View {
 
 #Preview {
     PaywallView()
-        .environment(SubscriptionManager())
+        .environment(RCSubscriptionManager())
 }

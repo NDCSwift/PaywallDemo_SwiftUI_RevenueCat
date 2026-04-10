@@ -1,8 +1,8 @@
 //
-        //
+    //
     //  Project: PaywallDemo_SwiftUI
     //  File: AdvancedPaywallView.swift
-    //  Created by Noah Carpenter 
+    //  Created by Noah Carpenter
     //
     //  📺 YouTube: Noah Does Coding
     //  https://www.youtube.com/@NoahDoesCoding97
@@ -10,25 +10,22 @@
     //  Dream Big. Code Bigger 🚀
     //
 
-    
-
-
 import SwiftUI
-import StoreKit
+import RevenueCat
 
 // MARK: - AdvancedPaywallView
 // Production-ready paywall with animated background, per-feature highlights,
 // plan toggle, social proof, and contextual trigger support
 struct AdvancedPaywallView: View {
 
-    @Environment(SubscriptionManager.self) private var store
+    @Environment(RCSubscriptionManager.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - Optional trigger context from AdvancedView
     var trigger: PaywallTrigger = .generic
 
     // MARK: - Local state
-    @State private var selectedProduct: Product?
+    @State private var selectedPackage: Package?
     @State private var isPurchasing = false
     @State private var showError = false
     @State private var animateGradient = false
@@ -43,6 +40,10 @@ struct AdvancedPaywallView: View {
         ("icloud.fill",         .cyan,    "Cloud Sync",            "Your documents across every device, always"),
         ("timer",               .orange,  "Advanced Focus Mode",   "Custom intervals, ambient sounds, and distraction blocking"),
     ]
+
+    private var packages: [Package] {
+        store.offerings?.current?.availablePackages ?? []
+    }
 
     var body: some View {
         ZStack {
@@ -64,10 +65,10 @@ struct AdvancedPaywallView: View {
                         .padding(.bottom, 28)
 
                     // MARK: - Plan selector
-                    if !store.products.isEmpty {
+                    if !packages.isEmpty {
                         PlanSelector(
-                            products: store.products,
-                            selectedProduct: $selectedProduct
+                            packages: packages,
+                            selectedPackage: $selectedPackage
                         )
                         .padding(.horizontal, 42)
                         .padding(.bottom, 20)
@@ -85,7 +86,7 @@ struct AdvancedPaywallView: View {
 
                     // MARK: - CTA
                     CTAButton(
-                        product: selectedProduct,
+                        package: selectedPackage,
                         isPurchasing: isPurchasing
                     ) {
                         Task { await handlePurchase() }
@@ -95,13 +96,13 @@ struct AdvancedPaywallView: View {
 
                     // MARK: - Footer
                     FooterLinks {
-                        Task { await store.restorePurchases() }
+                        Task { try? await store.restorePurchases() }
                     }
                     .padding(.bottom, 32)
                 }
             }
         }
-        
+
         .onAppear {
             withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
                 animateGradient = true
@@ -110,7 +111,7 @@ struct AdvancedPaywallView: View {
                 animateBadge = true
             }
             // Default to best value plan
-            selectedProduct = store.products.last
+            selectedPackage = packages.last
         }
         .alert("Purchase Failed", isPresented: $showError) {
             Button("OK", role: .cancel) { }
@@ -120,10 +121,10 @@ struct AdvancedPaywallView: View {
     }
 
     private func handlePurchase() async {
-        guard let product = selectedProduct else { return }
+        guard let package = selectedPackage else { return }
         isPurchasing = true
         do {
-            try await store.purchase(product)
+            try await store.purchase(package)
             dismiss()
         } catch {
             showError = true
@@ -235,17 +236,17 @@ private struct HeroSection: View {
 
 // MARK: - PlanSelector
 private struct PlanSelector: View {
-    let products: [Product]
-    @Binding var selectedProduct: Product?
+    let packages: [Package]
+    @Binding var selectedPackage: Package?
 
     var body: some View {
         VStack(spacing: 10) {
-            ForEach(products, id: \.id) { product in
+            ForEach(packages, id: \.identifier) { package in
                 PlanCard(
-                    product: product,
-                    isSelected: selectedProduct?.id == product.id
+                    package: package,
+                    isSelected: selectedPackage?.identifier == package.identifier
                 ) {
-                    selectedProduct = product
+                    selectedPackage = package
                 }
             }
         }
@@ -254,18 +255,20 @@ private struct PlanSelector: View {
 
 // MARK: - PlanCard
 private struct PlanCard: View {
-    let product: Product
+    let package: Package
     let isSelected: Bool
     let onTap: () -> Void
 
     private var isBestValue: Bool {
-        product.id.contains("yearly") || product.id.contains("annual")
+        package.packageType == .annual ||
+        package.identifier.contains("yearly") ||
+        package.identifier.contains("annual")
     }
 
     // MARK: - Savings calculation
     private var savingsText: String? {
-        guard isBestValue,
-              let priceValue = Double(product.price.description) else { return nil }
+        guard isBestValue else { return nil }
+        let priceValue = NSDecimalNumber(decimal: package.storeProduct.price).doubleValue
         let monthlyEquivalent = priceValue / 12
         return String(format: "$%.2f/mo", monthlyEquivalent)
     }
@@ -290,7 +293,7 @@ private struct PlanCard: View {
                 // Plan info
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(product.displayName)
+                        Text(package.storeProduct.localizedTitle)
                             .font(.subheadline.bold())
                             .foregroundStyle(.white)
 
@@ -315,11 +318,11 @@ private struct PlanCard: View {
 
                 // Price
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(product.displayPrice)
+                    Text(package.storeProduct.localizedPriceString)
                         .font(.subheadline.bold())
                         .foregroundStyle(.white)
 
-                    if let period = product.subscription?.subscriptionPeriod {
+                    if let period = package.storeProduct.subscriptionPeriod {
                         Text(periodLabel(period))
                             .font(.caption2)
                             .foregroundStyle(.white.opacity(0.5))
@@ -343,13 +346,12 @@ private struct PlanCard: View {
         }
     }
 
-    private func periodLabel(_ period: Product.SubscriptionPeriod) -> String {
+    private func periodLabel(_ period: RevenueCat.SubscriptionPeriod) -> String {
         switch period.unit {
         case .month: return "per month"
         case .year:  return "per year"
         case .week:  return "per week"
         case .day:   return "per day"
-        @unknown default: return ""
         }
     }
 }
@@ -452,13 +454,16 @@ private struct SocialProofRow: View {
 
 // MARK: - CTAButton
 private struct CTAButton: View {
-    let product: Product?
+    let package: Package?
     let isPurchasing: Bool
     let action: () -> Void
 
     private var label: String {
-        guard let product else { return "Select a Plan" }
-        return product.id.contains("yearly") ? "Start Free Trial — Yearly" : "Start Free Trial — Monthly"
+        guard let package else { return "Select a Plan" }
+        let isYearly = package.packageType == .annual ||
+                       package.identifier.contains("yearly") ||
+                       package.identifier.contains("annual")
+        return isYearly ? "Start Free Trial — Yearly" : "Start Free Trial — Monthly"
     }
 
     var body: some View {
@@ -483,11 +488,11 @@ private struct CTAButton: View {
             }
             .frame(height: 56)
         }
-        .disabled(product == nil || isPurchasing)
-        .opacity(product == nil ? 0.5 : 1)
+        .disabled(package == nil || isPurchasing)
+        .opacity(package == nil ? 0.5 : 1)
         // Subtle pulse when a plan is selected
-        .scaleEffect(product != nil ? 1 : 0.97)
-        .animation(.easeInOut(duration: 0.2), value: product?.id)
+        .scaleEffect(package != nil ? 1 : 0.97)
+        .animation(.easeInOut(duration: 0.2), value: package?.identifier)
     }
 }
 
@@ -513,5 +518,5 @@ private struct FooterLinks: View {
 // MARK: - Preview
 #Preview {
     AdvancedPaywallView(trigger: .lockedFeature("Custom Themes"))
-        .environment(SubscriptionManager())
+        .environment(RCSubscriptionManager())
 }

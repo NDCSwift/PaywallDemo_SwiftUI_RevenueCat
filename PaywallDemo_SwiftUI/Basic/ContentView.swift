@@ -15,7 +15,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(SubscriptionManager.self) private var store
+    @Environment(RCSubscriptionManager.self) private var store
     @State private var showPaywall = false
     @State private var hardGateActivated = false
     @State private var nudgeCount = 0
@@ -28,7 +28,7 @@ struct ContentView: View {
 
                         // Status header
                         HStack {
-                            if store.hasActiveSubscription {
+                            if store.isSubscribed {
                                 Label("Pro", systemImage: "crown.fill")
                                     .font(.subheadline.bold())
                                     .foregroundStyle(.yellow)
@@ -54,7 +54,7 @@ struct ContentView: View {
                                 .font(.caption).foregroundStyle(.secondary)
 
                             Button("Run Pro Feature") {
-                                if store.hasActiveSubscription {
+                                if store.isSubscribed {
                                     hardGateActivated = true
                                 } else {
                                     showPaywall = true
@@ -85,7 +85,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
 
                             Button("Use Feature") {
-                                if !store.hasActiveSubscription && store.usageCount >= store.freeUsageLimit {
+                                if !store.isSubscribed && store.usageCount >= store.freeUsageLimit {
                                     showPaywall = true
                                 } else {
                                     store.recordUsage()
@@ -141,7 +141,7 @@ struct ContentView: View {
 
                 // Soft nudge sticky banner
                 if nudgeCount % 5 == 0 {
-                    if !store.hasActiveSubscription {
+                    if !store.isSubscribed {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Enjoying the app?")
@@ -160,13 +160,17 @@ struct ContentView: View {
             }
             .navigationTitle("Paywall Patterns")
         }
+        .task {
+            await store.refresh()
+        }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
+            
         }
     }
 }
 
 #Preview {
     ContentView()
-        .environment(SubscriptionManager())
+        .environment(RCSubscriptionManager())
 }

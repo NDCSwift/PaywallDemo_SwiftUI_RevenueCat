@@ -31,7 +31,7 @@ struct FocusDocument: Identifiable {
 //   4. Soft nudge       — a non-blocking upgrade prompt for happy free users
 struct AdvancedView: View {
 
-    @Environment(SubscriptionManager.self) private var store
+    @Environment(RCSubscriptionManager.self) private var store
     @State private var showPaywall = false
     @State private var paywallTrigger: PaywallTrigger = .generic
 
@@ -80,7 +80,7 @@ struct AdvancedView: View {
 
                 // MARK: Pattern 4 — Soft contextual nudge
                 // Not a gate — just a persistent, non-intrusive upgrade row for free users
-                if !store.hasActiveSubscription {
+                if !store.isSubscribed {
                     Section {
                         UpgradePromptRow {
                             paywallTrigger = .generic
@@ -171,7 +171,7 @@ private struct DocumentRow: View {
 // This is how real apps present it — the gate is woven into the feature list,
 // not a separate "Pro Features" page.
 private struct ToolsSection: View {
-    let store: SubscriptionManager
+    let store: RCSubscriptionManager
     @Binding var exportCount: Int
     let freeExportLimit: Int
     @Binding var showPaywall: Bool
@@ -191,7 +191,7 @@ private struct ToolsSection: View {
                 HStack {
                     Label("Export to PDF", systemImage: "doc.fill")
                     Spacer()
-                    if !store.hasActiveSubscription {
+                    if !store.isSubscribed {
                         // Remaining free uses — transparency before the gate
                         Text("\(max(0, freeExportLimit - exportCount)) free left")
                             .font(.caption)
@@ -204,17 +204,17 @@ private struct ToolsSection: View {
             // PRO badge on the right signals the gate before they even tap.
             // Free users can see these features exist — they just can't use them.
             // That visibility is intentional: you want free users to know what they're missing.
-            ProFeatureButton(title: "AI Writing Assistant", icon: "sparkles", isSubscribed: store.hasActiveSubscription) {
+            ProFeatureButton(title: "AI Writing Assistant", icon: "sparkles", isSubscribed: store.isSubscribed) {
                 paywallTrigger = .lockedFeature("AI Writing Assistant")
                 showPaywall = true
             }
 
-            ProFeatureButton(title: "Custom Themes", icon: "paintpalette.fill", isSubscribed: store.hasActiveSubscription) {
+            ProFeatureButton(title: "Custom Themes", icon: "paintpalette.fill", isSubscribed: store.isSubscribed) {
                 paywallTrigger = .lockedFeature("Custom Themes")
                 showPaywall = true
             }
 
-            ProFeatureButton(title: "Cloud Sync", icon: "icloud.fill", isSubscribed: store.hasActiveSubscription) {
+            ProFeatureButton(title: "Cloud Sync", icon: "icloud.fill", isSubscribed: store.isSubscribed) {
                 paywallTrigger = .lockedFeature("Cloud Sync")
                 showPaywall = true
             }
@@ -222,7 +222,7 @@ private struct ToolsSection: View {
     }
 
     private func handleExport() {
-        if store.hasActiveSubscription {
+        if store.isSubscribed {
             // Pro user — no limit, just do the action
             exportCount += 1
         } else if exportCount < freeExportLimit {
@@ -268,7 +268,7 @@ private struct ProFeatureButton: View {
 // This works really well for content-heavy apps — the user gets a glimpse
 // of what they're paying for before they commit.
 private struct AnalyticsSection: View {
-    let store: SubscriptionManager
+    let store: RCSubscriptionManager
     @Binding var showPaywall: Bool
     @Binding var paywallTrigger: PaywallTrigger
 
@@ -280,7 +280,7 @@ private struct AnalyticsSection: View {
                 HStack {
                     Label("Writing Analytics", systemImage: "chart.bar.fill")
                     Spacer()
-                    if !store.hasActiveSubscription { ProBadge() }
+                    if !store.isSubscribed { ProBadge() }
                 }
             }
 
@@ -290,7 +290,7 @@ private struct AnalyticsSection: View {
                 HStack {
                     Label("Weekly Report", systemImage: "calendar.badge.clock")
                     Spacer()
-                    if !store.hasActiveSubscription { ProBadge() }
+                    if !store.isSubscribed { ProBadge() }
                 }
             }
         }
@@ -373,7 +373,7 @@ struct ProBadge: View {
 struct LockedAnalyticsView: View {
     @Binding var showPaywall: Bool
     @Binding var trigger: PaywallTrigger
-    @Environment(SubscriptionManager.self) private var store
+    @Environment(RCSubscriptionManager.self) private var store
 
     private let weekData: [(day: String, height: CGFloat)] = [
         ("Mon", 60), ("Tue", 95), ("Wed", 45),
@@ -390,7 +390,7 @@ struct LockedAnalyticsView: View {
                 .padding()
             }
 
-            if !store.hasActiveSubscription {
+            if !store.isSubscribed {
                 AnalyticsLockOverlay {
                     trigger = .lockedFeature("Writing Analytics")
                     showPaywall = true
@@ -489,6 +489,6 @@ private struct AnalyticsLockOverlay: View {
 // MARK: - Preview
 #Preview {
     AdvancedView()
-        .environment(SubscriptionManager())
+        .environment(RCSubscriptionManager())
 }
 

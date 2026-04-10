@@ -15,7 +15,7 @@
 import SwiftUI
 
 struct ContentGateView: View {
-    @Environment(SubscriptionManager.self) private var store
+    @Environment(RCSubscriptionManager.self) private var store
     @State private var showPaywall = false
 
     var body: some View {
@@ -30,9 +30,9 @@ struct ContentGateView: View {
             .frame(maxWidth: .infinity)
             .padding(40)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .blur(radius: store.hasActiveSubscription ? 0 : 14)
+            .blur(radius: store.isSubscribed ? 0 : 14)
 
-            if !store.hasActiveSubscription {
+            if !store.isSubscribed {
                 VStack(spacing: 12) {
                     Image(systemName: "lock.fill")
                         .font(.largeTitle)
@@ -50,5 +50,5 @@ struct ContentGateView: View {
 
 #Preview {
     ContentGateView()
-        .environment(SubscriptionManager())
+        .environment(RCSubscriptionManager())
 }
