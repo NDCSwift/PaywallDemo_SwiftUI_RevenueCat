@@ -11,7 +11,7 @@ This is the RevenueCat companion to the [PaywallDemo_SwiftUI](https://github.com
 - **Drop-in `RCSubscriptionManager`** — a single `@Observable` class wraps offerings, purchase, and restore; plug it into any app via `.environment(store)`
 - **Two tiers of implementation** — the basic version gets you shipping fast; the advanced version shows how a polished production paywall actually behaves
 
-[![Watch on YouTube](https://img.shields.io/badge/YouTube-Watch%20the%20Tutorial-red?style=for-the-badge&logo=youtube)](https://youtu.be/9QmnlxGHINU)
+[![Watch on YouTube](https://img.shields.io/badge/YouTube-Watch%20the%20Tutorial-red?style=for-the-badge&logo=youtube)](https://youtu.be/lEbdELaxzpM)
 
 ## 🚀 Getting Started
 1. Clone the repo
